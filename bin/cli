@@ -1,0 +1,37 @@
+#!/usr/bin/env ruby
+
+print 'Please enter your email: '
+email = gets.chomp
+user = User.where(email: email).first
+unless user
+  puts 'No user found'
+  return
+end
+begin
+  puts <<~HEREDOC
+  Would you like to 1) Create a new shortened URL
+                    2) Visit an existing shortened URL
+  HEREDOC
+  selection = gets.chomp
+  raise "Invalid input: #{selection}" unless %w[1 2].include?(selection)
+rescue StandardError => e
+  puts e
+  retry
+end
+if selection == '1'
+  print 'Please enter the full URL: '
+  long_url = gets.chomp
+  ShortenedUrl.generate(user, long_url)
+  short_url = ShortenedUrl.last.short_url
+  puts "Entry created. Short URL: #{short_url}"
+else
+  puts 'Here are the available shortened URLS:'
+  ShortenedUrl.all.each { |url| puts url.short_url }
+  print 'Please enter the URL you\'d like to visit: '
+  short_url = gets.chomp
+  url_obj = ShortenedUrl.where(short_url: short_url).first
+  long_url = url_obj.long_url
+  puts "Launching #{long_url}..."
+  Visit.record_visit!(user, url_obj)
+  Launchy.open(long_url)
+end
