@@ -27,4 +27,6 @@ class User < ApplicationRecord
     through: :visits,
     source: :url
 
+  
+
 end
