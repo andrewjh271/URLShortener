@@ -16,6 +16,8 @@ require_relative 'visit'
 class ShortenedUrl < ApplicationRecord
   validates :short_url, presence: true, uniqueness: true
   validates :long_url, presence:true
+  validate :no_spamming
+  validate :no_premium_max
 
   belongs_to(:submitter, {
     class_name: :User,
@@ -64,4 +66,21 @@ class ShortenedUrl < ApplicationRecord
   def num_recent_uniques
     Visit.select(:user_id).distinct.where('url_id = ? AND created_at >= ?', id, 10.minutes.ago).count
   end
+
+  private
+
+  def no_premium_max
+    unless User.find(user_id).premium ||
+           self.class.select(:*).where(user_id: user_id).count < 5
+      errors[:base] << 'Non-premium user cannot submit more than 5 URLS.'
+    end
+  end
+
+  def no_spamming
+    unless self.class.select(:*).where(
+      'user_id = ? AND created_at >= ?', user_id, 1.minute.ago).count < 3
+      errors[:base] << 'User cannot submit more than 3 URLS in 1 minute.'
+    end
+  end
+
 end
