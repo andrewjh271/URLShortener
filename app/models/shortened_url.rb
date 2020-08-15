@@ -39,12 +39,14 @@ class ShortenedUrl < ApplicationRecord
 
   has_many :tag_topics,
     through: :tags,
-    source: :topic
+    source: :topic,
+    dependent: :destroy
 
   has_many :visitors,
     -> { distinct },
     through: :visits,
-    source: :user
+    source: :user,
+    dependent: :destroy
 
   def self.random_code
     code = SecureRandom.urlsafe_base64(16)
@@ -54,6 +56,29 @@ class ShortenedUrl < ApplicationRecord
   def self.generate(user, long_url)
     ShortenedUrl.create!(user_id: user.id, long_url: long_url, short_url: random_code)
   end
+
+  def self.prune
+    # Alternate syntax if string method weren't required:
+    # ShortenedUrl.joins(:submitter).where(users: {email: "bmyfriend@hotmail.com"})
+
+    # A LOT of unsuccessfull attempts: getting joins(:submitter) because of belongs_to association,
+    # but users when referencing the table because that is the table name
+    # shortened_url.created_at instead of just created_at
+    ShortenedUrl.joins(:submitter).where('shortened_urls.created_at < ? AND users.premium = FALSE', 7.days.ago).destroy_all
+    # declaring 'dependent: :destroy' in the has_many associations allows destroy_all to delete those as well
+  end
+
+=begin
+  SQL query I was going for above:
+  <<-SQL
+  SELECT *
+  FROM shortened_urls
+  INNER JOIN users ON shortened_urls.user_id = users.id
+  WHERE
+    shortened_urls.created_at < 7.days.ago
+    AND users.premium = FALSE
+  SQL
+=end
 
   def num_clicks
     visits.count
