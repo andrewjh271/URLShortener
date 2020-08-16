@@ -129,13 +129,13 @@ class ShortenedUrl < ApplicationRecord
 
   def no_premium_max
     unless User.find(user_id).premium ||
-           self.class.select(:*).where(user_id: user_id).count < 5
+           self.class.where(user_id: user_id).count < 5
       errors[:base] << 'Non-premium user cannot submit more than 5 URLS.'
     end
   end
 
   def no_spamming
-    unless self.class.select(:*).where(
+    unless self.class.where(
       'user_id = ? AND created_at >= ?', user_id, 1.minute.ago).count < 3
       errors[:base] << 'User cannot submit more than 3 URLS in 1 minute.'
     end
