@@ -64,7 +64,7 @@ class ShortenedUrl < ApplicationRecord
     # A LOT of unsuccessfull attempts: getting joins(:submitter) because of belongs_to association,
     # but users when referencing the table because that is the table name
     # shortened_url.created_at instead of just created_at
-    ShortenedUrl.joins(:submitter).where('shortened_urls.created_at < ? AND users.premium = FALSE', 7.days.ago).destroy_all
+    ShortenedUrl.joins(:submitter).where('shortened_urls.created_at < ? AND users.premium IS FALSE', 2.days.ago).destroy_all
     # declaring 'dependent: :destroy' in the has_many associations allows destroy_all to delete those as well
   end
 
