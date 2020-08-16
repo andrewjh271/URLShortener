@@ -12,6 +12,7 @@
 require 'securerandom'
 require_relative 'user'
 require_relative 'visit'
+require_relative 'vote'
 
 class ShortenedUrl < ApplicationRecord
   validates :short_url, presence: true, uniqueness: true
@@ -28,13 +29,20 @@ class ShortenedUrl < ApplicationRecord
   has_many(:visits, {
     class_name: :Visit,
     foreign_key: :url_id,
-    primary_key: :id
+    primary_key: :id,
   })
 
   has_many(:tags, {
     class_name: :Tagging,
     foreign_key: :url_id,
     primary_key: :id
+  })
+
+  has_many(:votes, {
+    class_name: :Vote,
+    foreign_key: :url_id,
+    primary_key: :id,
+    dependent: :destroy
   })
 
   has_many :tag_topics,
@@ -64,10 +72,10 @@ class ShortenedUrl < ApplicationRecord
     # A LOT of unsuccessfull attempts: getting joins(:submitter) because of belongs_to association,
     # but users when referencing the table because that is the table name
     # shortened_url.created_at instead of just created_at
-    ShortenedUrl.joins(:submitter).where('shortened_urls.created_at < ? AND users.premium IS FALSE', 2.days.ago).destroy_all
+    ShortenedUrl.joins(:submitter).where('shortened_urls.created_at < ? AND users.premium IS FALSE', 3.days.ago).destroy_all
     # declaring 'dependent: :destroy' in the has_many associations allows destroy_all to delete those as well
   end
-
+  
 =begin
   SQL query I was going for above:
   <<-SQL
@@ -79,6 +87,31 @@ class ShortenedUrl < ApplicationRecord
     AND users.premium = FALSE
   SQL
 =end
+
+  def self.top
+    self.all.sort { |a, b| b.score <=> a.score }
+  end
+
+  def self.hot(n)
+    self.all.sort { |a, b| b.recent_score(n) <=> a.recent_score(n) }
+  end
+
+  def score
+    positive_score = Vote.where('url_id = ? AND positive IS TRUE', id).count
+    negative_score = Vote.where('url_id = ? AND negative IS TRUE', id).count
+    positive_score - negative_score
+  end
+
+  def recent_score(n)
+    positive_score = Vote.where(
+      'url_id = ? AND created_at >= ? AND positive IS TRUE', id, n.minutes.ago).count
+    negative_score = Vote.where(
+      'url_id = ? AND created_at >= ? AND negative IS TRUE', id, n.minutes.ago).count
+    positive_score - negative_score
+  end
+
+  Vote.where('url_id = 5 AND positive IS TRUE').count
+  Vote.where('url_id = 5 AND negative IS TRUE').count
 
   def num_clicks
     visits.count

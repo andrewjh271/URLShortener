@@ -23,11 +23,14 @@ class User < ApplicationRecord
     primary_key: :id
   })
 
+  has_many(:votes, {
+    class_name: :Vote,
+    foreign_key: :user_id,
+    primary_key: :id
+  })
+
   has_many :visited_urls,
     -> { distinct },
     through: :visits,
     source: :url
-
-  
-
 end
