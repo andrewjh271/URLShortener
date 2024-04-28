@@ -106,13 +106,18 @@ class ShortenedUrl < ApplicationRecord
 
   def self.top3
     self
-    .joins(:votes)
+    .select('shortened_urls.*, COUNT(votes.positive) - COUNT(votes.negative) AS karma')
+    .left_outer_joins(:votes)
     .group('shortened_urls.id')
-    .order(count: :desc)
-  # use outer join to include all ShortenedUrls
-  # doesn't calculate actual score, only counts votes. not sure how I could order by a 
-  # calculated value. decided not to get bogged down in this right now. this project is using
-  # a pretty old version of rails anyway
+    .order('count DESC')
+
+    # produces the same SQL as in ::top2, and returns an ActiveRecord::Relation
+    # SELECT shortened_urls.*, COUNT(votes.positive) - COUNT(votes.negative) AS karma 
+    # FROM "shortened_urls" 
+    # LEFT OUTER JOIN "votes" 
+    # ON "votes"."url_id" = "shortened_urls"."id" 
+    # GROUP BY shortened_urls.id 
+    # ORDER BY count DESC
   end
 
   def self.hot(n)
