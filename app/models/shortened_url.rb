@@ -92,6 +92,29 @@ class ShortenedUrl < ApplicationRecord
     self.all.sort { |a, b| b.score <=> a.score }
   end
 
+  def self.top2
+    sql = <<-SQL.squish
+      SELECT shortened_urls.*, COUNT(votes.positive) - COUNT(votes.negative) AS karma
+      FROM shortened_urls
+      LEFT OUTER JOIN votes ON votes.url_id = shortened_urls.id
+      GROUP BY shortened_urls.id
+      ORDER BY karma DESC;
+    SQL
+    self.find_by_sql(sql)
+    # desired result and order, but returns an array instead of ActiveRecord::Relation
+  end
+
+  def self.top3
+    self
+    .joins(:votes)
+    .group('shortened_urls.id')
+    .order(count: :desc)
+  # use outer join to include all ShortenedUrls
+  # doesn't calculate actual score, only counts votes. not sure how I could order by a 
+  # calculated value. decided not to get bogged down in this right now. this project is using
+  # a pretty old version of rails anyway
+  end
+
   def self.hot(n)
     self.all.sort { |a, b| b.recent_score(n) <=> a.recent_score(n) }
   end
@@ -109,9 +132,6 @@ class ShortenedUrl < ApplicationRecord
       'url_id = ? AND created_at >= ? AND negative IS TRUE', id, n.minutes.ago).count
     positive_score - negative_score
   end
-
-  Vote.where('url_id = 5 AND positive IS TRUE').count
-  Vote.where('url_id = 5 AND negative IS TRUE').count
 
   def num_clicks
     visits.count
