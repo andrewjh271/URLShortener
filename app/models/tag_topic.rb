@@ -27,6 +27,8 @@ class TagTopic < ApplicationRecord
   # A lot of direct SQL, much preferable to the huge number of queries the above method generates.
   # ShortenedUrl.find_by_sql will return an array of ShortenedUrl objects with properties/methods based
   # on the values the SQL returns
+
+  # https://api.rubyonrails.org/classes/ActiveRecord/Querying.html#method-i-find_by_sql
   def popular_links2
     sql = <<-SQL.squish
       SELECT shortened_urls.short_url, COUNT(*) AS count
@@ -34,13 +36,13 @@ class TagTopic < ApplicationRecord
       INNER JOIN taggings ON taggings.url_id = shortened_urls.id
       INNER JOIN tag_topics ON taggings.topic_id = tag_topics.id
       INNER JOIN visits ON visits.url_id = shortened_urls.id
-      WHERE tag_topics.id = #{id}
+      WHERE tag_topics.id = ?
       GROUP BY shortened_urls.id
       ORDER BY COUNT(*) DESC
       LIMIT(3);
     SQL
     # result = ApplicationRecord.connection.execute(sql) also works
-    result = ShortenedUrl.find_by_sql(sql)
+    result = ShortenedUrl.find_by_sql([sql, id])
     result.map { |url| "#{url.short_url}: #{url.count} visits" }
   end
   
